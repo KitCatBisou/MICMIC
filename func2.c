@@ -27,6 +27,7 @@ unsigned char current_display = 0;
 */
 const unsigned char mode[] = {0b10100001, 0b10010010};
 volatile unsigned char flagMode = 0; //PC(0) / switches(1)
+unsigned char input;
 
 typedef struct USARTRX {
 	char receiver_buffer;
@@ -191,92 +192,114 @@ int main(void) {
 
 	init();
 
-	unsigned char flag = 0;
+	unsigned char flag = 0; //flag for debounce
 
-	while (1) {
-		switches = PINA & 0b0111111;
+	while(1) {
+
+		if(flagMode == 0){
+			if(rxUSART.receive == 1){ //if we have new data
+				if (rxUSART.error == 1) { //if theres no error
+					input = rxUSART.receiver_buffer;
+					rxUSART.receive = 0;
+				}
+			}
+		}
+		else {
+			switches = PINA & 0b0111111;
+		}
 
 		switch(switches){
-			case 0b00111110:	//SW1	inc 5%
-			_delay_ms(50);
-			if(flag == 0){
-				flag = 1;
-				if(flagStop == 1){
-					flagStop = 0;
-					speed = (motor_speed * 255) / 100;
-					OCR2 = speed;
-				}
-				else{
-					if(motor_speed < 100){
-						motor_speed += 5;
+			case 0b00111110: //SW1 & '+' inc 5%
+			case '+':
+				_delay_ms(50);
+				if(flag == 0){
+					flag = 1;
+					if(flagStop == 1){
+						flagStop = 0;
 						speed = (motor_speed * 255) / 100;
 						OCR2 = speed;
 					}
+					else{
+						if(motor_speed < 100){
+							motor_speed += 5;
+							speed = (motor_speed * 255) / 100;
+							OCR2 = speed;
+						}
+					}
 				}
-			}
-			break;
-			case 0b00111101: //SW2	dec 5%
-			_delay_ms(50);
-			if(flag == 0){
-				flag = 1;
-				if(flagStop == 1){
-					flagStop = 0;
-					speed = (motor_speed * 255) / 100;
-					OCR2 = speed;
-				}
-				else{
-					if(motor_speed > 0){
-						motor_speed -= 5;
+				break;
+
+			case 0b00111101: //SW2 & '-' dec 5%
+			case '-':
+				_delay_ms(50);
+				if(flag == 0){
+					flag = 1;
+					if(flagStop == 1){
+						flagStop = 0;
 						speed = (motor_speed * 255) / 100;
 						OCR2 = speed;
 					}
+					else {
+						if(motor_speed > 0){
+							motor_speed -= 5;
+							speed = (motor_speed * 255) / 100;
+							OCR2 = speed;
+						}
+					}
 				}
-			}
+				break;
 
-			break;
-			case 0b00111011: //SW3 puts motor speed at 25%
-			_delay_ms(50);
-			if(flag == 0) {
-				flag = 1;
-				flagStop = 0; // Added safety un-stop
-				motor_speed = 25;
-				speed = (motor_speed * 255) / 100;
-				OCR2 = speed;
-			}
-			break;
-			case 0b00110111: //SW4 puts motor speed at 50%
-			_delay_ms(50);
-			if(flag == 0) {
-				flag = 1;
-				flagStop = 0;
-				motor_speed = 50;
-				speed = (motor_speed * 255) / 100;
-				OCR2 = speed;
-			}
-			break;
+			case 0b00111011: //SW3 and '1' puts motor speed at 25%
+			case '1':
+				_delay_ms(50);
+				if(flag == 0) {
+					flag = 1;
+					flagStop = 0; // Added safety un-stop
+					motor_speed = 25;
+					speed = (motor_speed * 255) / 100;
+					OCR2 = speed;
+				}
+				break;
 
-			case 0b00101111:  //SW5 inverts speed
-			_delay_ms(50);
-			if(flag == 0 && flagStop == 0){
-				flag=1;
-				flagInv=50; //contador para contar 250ms entre motor parar e inverter
-				OCR2=0;
-			}
-			break;
+			case 0b00110111: //SW4 and '2' puts motor speed at 50%
+			case '2':
+				_delay_ms(50);
+				if(flag == 0) {
+					flag = 1;
+					flagStop = 0;
+					motor_speed = 50;
+					speed = (motor_speed * 255) / 100;
+					OCR2 = speed;
+				}
+				break;
 
-			case 0b00011111:  //SW6 stops motor
-			_delay_ms(50);
-			if(flag == 0){
-				flag = 1;
-				flagStop = 1;
-				motor_speed = 0;
-				speed = (motor_speed * 255) / 100;
-				OCR2 = speed;
-			}
-			break;
+			case 0b00101111:  //SW5, 'i' and "I" inverts speed
+			case 'I':
+			case 'i':
+				_delay_ms(50);
+				if(flag == 0 && flagStop == 0){
+					flag=1;
+					flagInv=50; //contador para contar 250ms entre motor parar e inverter
+					OCR2=0;
+				}
+				break;
+
+			case 0b00011111:  //SW6, 'p' and 'P' stops motor
+			case 'P':
+			case 'p':
+				_delay_ms(50);
+				if(flag == 0){
+					flag = 1;
+					flagStop = 1;
+					motor_speed = 0;
+					speed = (motor_speed * 255) / 100;
+					OCR2 = speed;
+				}
+				break;
+
 			default:
-			flag = 0;
-			break;
+				flag = 0;
+				break;
 		}
 
 		if(flag5ms == 1){
