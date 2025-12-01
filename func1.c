@@ -82,10 +82,12 @@ void update_display(void) {
 		case 2:
 		PORTA = displays[2];
 		// If signal is 1 (negative), show minus, else blank
-		if (signal == 1)
-		PORTC = digits[11];
-		else
-		PORTC = digits[10];
+		if (signal == 1) {
+			PORTC = digits[11];
+		}
+		else {
+			PORTC = digits[10];
+		}
 		break;
 	}
 	current_display++;

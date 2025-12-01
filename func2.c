@@ -107,6 +107,7 @@ void Inv(void)
 void update_display(void) {
 	num_d0 = motor_speed % 10; //puts last digit of speed on display 0
 	num_d1 = motor_speed / 10; //puts first digit of speed on display 1
+
 	if(num_d1 == 10){ //if speed == 100, puts 99 on display
 		num_d1 = 9;
 		num_d0 = 9;
@@ -125,10 +126,12 @@ void update_display(void) {
 		case 2:
 		PORTA = displays[2];
 		// If signal is 1 (negative), show minus, else blank
-		if (signal == 1)
-		PORTC = digits[11];
-		else
-		PORTC = digits[10];
+		if (signal == 1) {
+			PORTC = digits[11];
+		}
+		else {
+			PORTC = digits[10];
+		}
 		break;
 
 		case 3:
