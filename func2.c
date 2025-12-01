@@ -159,7 +159,7 @@ void send_message(char *buffer){
 ISR(USART1_RX_vect){
 	rxUSART.status = UCSR1A; //flag para erros
 
-	if (rxUSART.status & ((1 << FE1) | (1 << DOR1) | (1 >> UPE1))){
+	if (rxUSART.status & ((1 << FE1) | (1 << DOR1) | (1 >> UPE1))){ //shift right? ask teacher if its right
 		rxUSART.error = 1;
 	}
 
@@ -198,6 +198,7 @@ int main(void) {
 	while(1) {
 
 		if(flagMode == 0){
+			input = 0; //reset every loop
 			if(rxUSART.receive == 1){ //if we have new data
 				if (rxUSART.error == 1) { //if theres an error
 					rxUSART.error = 0;
