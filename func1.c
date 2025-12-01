@@ -72,23 +72,24 @@ void update_display(void) {
 	}
 	switch(current_display){
 		case 0:
-		PORTA = displays[0];
-		PORTC = digits[num_d0];
-		break;
+			PORTA = displays[0];
+			PORTC = digits[num_d0];
+			break;
+
 		case 1:
-		PORTA = displays[1];
-		PORTC = digits[num_d1];
-		break;
+			PORTA = displays[1];
+			PORTC = digits[num_d1];
+			break;
 		case 2:
-		PORTA = displays[2];
-		// If signal is 1 (negative), show minus, else blank
-		if (signal == 1) {
-			PORTC = digits[11];
-		}
-		else {
-			PORTC = digits[10];
-		}
-		break;
+			PORTA = displays[2];
+			// If signal is 1 (negative), show minus, else blank
+			if (signal == 1) {
+				PORTC = digits[11];
+			}
+			else {
+				PORTC = digits[10];
+			}
+			break;
 	}
 	current_display++;
 	if(current_display == 3) {
@@ -109,85 +110,88 @@ int main(void) {
 
 		switch(switches){
 			case 0b00111110:	//SW1	inc 5%
-			_delay_ms(50);
-			if(flag == 0){
-				flag = 1;
-				if(flagStop == 1){
-					flagStop = 0;
-					speed = (motor_speed * 255) / 100;
-					OCR2 = speed;
-				}
-				else{
-					if(motor_speed < 100){
-						motor_speed += 5;
+				_delay_ms(50);
+				if(flag == 0){
+					flag = 1;
+					if(flagStop == 1){
+						flagStop = 0;
 						speed = (motor_speed * 255) / 100;
 						OCR2 = speed;
 					}
-				}
-			}
-			break;
-			case 0b00111101: //SW2	dec 5%
-			_delay_ms(50);
-			if(flag == 0){
-				flag = 1;
-				if(flagStop == 1){
-					flagStop = 0;
-					speed = (motor_speed * 255) / 100;
-					OCR2 = speed;
-				}
-				else{
-					if(motor_speed > 0){
-						motor_speed -= 5;
-						speed = (motor_speed * 255) / 100;
-						OCR2 = speed;
+					else{
+						if(motor_speed < 100){
+							motor_speed += 5;
+							speed = (motor_speed * 255) / 100;
+							OCR2 = speed;
+						}
 					}
 				}
-			}
+				break;
 
-			break;
+			case 0b00111101: //SW2	dec 5%
+				_delay_ms(50);
+				if(flag == 0){
+					flag = 1;
+					if(flagStop == 1){
+						flagStop = 0;
+						speed = (motor_speed * 255) / 100;
+						OCR2 = speed;
+					}
+					else{
+						if(motor_speed > 0){
+							motor_speed -= 5;
+							speed = (motor_speed * 255) / 100;
+							OCR2 = speed;
+						}
+					}
+				}
+				break;
+
 			case 0b00111011: //SW3 puts motor speed at 25%
-			_delay_ms(50);
-			if(flag == 0) {
-				flag = 1;
-				flagStop = 0; // Added safety un-stop
-				motor_speed = 25;
-				speed = (motor_speed * 255) / 100;
-				OCR2 = speed;
-			}
-			break;
+				_delay_ms(50);
+				if(flag == 0) {
+					flag = 1;
+					flagStop = 0; // Added safety un-stop
+					motor_speed = 25;
+					speed = (motor_speed * 255) / 100;
+					OCR2 = speed;
+				}
+				break;
+
 			case 0b00110111: //SW4 puts motor speed at 50%
-			_delay_ms(50);
-			if(flag == 0) {
-				flag = 1;
-				flagStop = 0;
-				motor_speed = 50;
-				speed = (motor_speed * 255) / 100;
-				OCR2 = speed;
-			}
-			break;
+				_delay_ms(50);
+				if(flag == 0) {
+					flag = 1;
+					flagStop = 0;
+					motor_speed = 50;
+					speed = (motor_speed * 255) / 100;
+					OCR2 = speed;
+				}
+				break;
 
 			case 0b00101111:  //SW5 inverts speed
-			_delay_ms(50);
-			if(flag == 0 && flagStop == 0){
-				flag=1;
-				flagInv=50; //counts 250ms (50 * 5ms) between the motor stopping and inverting
-				OCR2=0;
-			}
-			break;
+				_delay_ms(50);
+				if(flag == 0 && flagStop == 0){
+					flag=1;
+					flagInv=50; //counts 250ms (50 * 5ms) between the motor stopping and inverting
+					OCR2=0;
+				}
+				break;
 
 			case 0b00011111:  //SW6 stops motor
-			_delay_ms(50);
-			if(flag == 0){
-				flag = 1;
-				flagStop = 1;
-				motor_speed = 0;
-				speed = (motor_speed * 255) / 100;
-				OCR2 = speed;
-			}
-			break;
+				_delay_ms(50);
+				if(flag == 0){
+					flag = 1;
+					flagStop = 1;
+					motor_speed = 0;
+					speed = (motor_speed * 255) / 100;
+					OCR2 = speed;
+				}
+				break;
+
 			default:
-			flag = 0;
-			break;
+				flag = 0;
+				break;
 		}
 
 		if(flag5ms == 1){

@@ -114,25 +114,25 @@ void update_display(void) {
 	}
 	switch(current_display){
 		case 0:
-		PORTA = displays[0];
-		PORTC = digits[num_d0];
-		break;
+			PORTA = displays[0];
+			PORTC = digits[num_d0];
+			break;
 
 		case 1:
-		PORTA = displays[1];
-		PORTC = digits[num_d1];
-		break;
+			PORTA = displays[1];
+			PORTC = digits[num_d1];
+			break;
 
 		case 2:
-		PORTA = displays[2];
-		// If signal is 1 (negative), show minus, else blank
-		if (signal == 1) {
-			PORTC = digits[11];
-		}
-		else {
-			PORTC = digits[10];
-		}
-		break;
+			PORTA = displays[2];
+			// If signal is 1 (negative), show minus, else blank
+			if (signal == 1) {
+				PORTC = digits[11];
+			}
+			else {
+				PORTC = digits[10];
+			}
+			break;
 
 		case 3:
 			PORTA = displays[3];
