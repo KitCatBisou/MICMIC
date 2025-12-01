@@ -7,7 +7,7 @@
 
 */
 const unsigned char digits[] = {0xc0, 0xf9, 0xa4, 0xb0, 0x99, 0x92, 0x82, 0xf8, 0x80, 0x90, 0xFF, 0XBF}; //0-9, blank, minus signal
-const unsigned char displays[] = {0b11000000, 0b10000000, 0b01000000};
+const unsigned char displays[] = {0b11000000, 0b10000000, 0b01000000, 0b00000000};
 
 volatile unsigned char flag5ms = 0;
 volatile unsigned char flagStop = 0;
@@ -25,6 +25,8 @@ unsigned char current_display = 0;
    USART VARIABLES
 
 */
+const unsigned char mode[] = {0b10100001, 0b10010010};
+volatile unsigned char flagMode = 0; //PC(0) / switches(1)
 
 typedef struct USARTRX {
 	char receiver_buffer;
@@ -113,10 +115,12 @@ void update_display(void) {
 		PORTA = displays[0];
 		PORTC = digits[num_d0];
 		break;
+
 		case 1:
 		PORTA = displays[1];
 		PORTC = digits[num_d1];
 		break;
+
 		case 2:
 		PORTA = displays[2];
 		// If signal is 1 (negative), show minus, else blank
@@ -125,9 +129,13 @@ void update_display(void) {
 		else
 		PORTC = digits[10];
 		break;
+
+		case 3:
+			PORTA = displays[3];
+			PORTC = mode[flagMode]; //either 0 or 1 which is "d" or "S" on display
 	}
 	current_display++;
-	if(current_display == 3) {
+	if(current_display == 4) {
 		current_display = 0;
 	}
 }
@@ -155,6 +163,26 @@ ISR(USART1_RX_vect){
 
 	rxUSART.receiver_buffer = UDR1;
 	rxUSART.receive = 1;
+
+	if(rxUSART.receiver_buffer == 'd' || rxUSART.receiver_buffer == 'D'){
+		flagMode=0;
+		rxUSART.receive = 0;
+	}
+
+	if(rxUSART.receiver_buffer == 's' || rxUSART.receiver_buffer == 'S'){
+		flagMode=1;
+		rxUSART.receive = 0;
+	}
+	if(rxUSART.receiver_buffer == 'b' || rxUSART.receiver_buffer == 'B'){
+		if(signal == 1){
+			sprintf(transmit_buffer,"Motor Speed: -%d\r\n",motor_speed);
+		}
+		else{
+			sprintf(transmit_buffer,"Motor Speed: %d\r\n",motor_speed);
+		}
+		send_message(transmit_buffer);
+		rxUSART.receive = 0;
+	}
 }
 
 
