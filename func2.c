@@ -199,17 +199,20 @@ int main(void) {
 
 		if(flagMode == 0){
 			if(rxUSART.receive == 1){ //if we have new data
-				if (rxUSART.error == 1) { //if theres no error
-					input = rxUSART.receiver_buffer;
-					rxUSART.receive = 0;
+				if (rxUSART.error == 1) { //if theres an error
+					rxUSART.error = 0;
 				}
+				else {
+					input = rxUSART.receiver_buffer;
+				}
+				rxUSART.receive = 0;
 			}
 		}
 		else {
-			switches = PINA & 0b0111111;
+			input = PINA & 0b0111111;
 		}
 
-		switch(switches){
+		switch(input){
 			case 0b00111110: //SW1 & '+' inc 5%
 			case '+':
 				_delay_ms(50);
