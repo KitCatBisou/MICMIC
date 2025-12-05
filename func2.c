@@ -27,7 +27,7 @@ unsigned char current_display = 0;
 */
 const unsigned char mode[] = {0b10100001, 0b10010010};
 volatile unsigned char flagMode = 0; //PC(0) / switches(1)
-unsigned char input;
+unsigned char input = 0;
 
 typedef struct USARTRX {
 	char receiver_buffer;
@@ -37,7 +37,7 @@ typedef struct USARTRX {
 	}USARTRX_st;
 
 volatile USARTRX_st rxUSART = {0, 0, 0, 0}; // inicializa variável
-char transmit_buffer[10];
+char transmit_buffer[20];
 
 /*
    INITS
@@ -152,7 +152,7 @@ void send_message(char *buffer){
 	unsigned char i = 0;
 
 	while(buffer[i] != '\0'){
-		while((UCSR1A & 1 << UDRE1) == 0);
+		while((UCSR1A & (1 << UDRE1)) == 0);
 		UDR1 = buffer[i];
 		i++;
 	}
@@ -161,32 +161,13 @@ void send_message(char *buffer){
 ISR(USART1_RX_vect){
 	rxUSART.status = UCSR1A; //flag para erros
 
-	if (rxUSART.status & ((1 << FE1) | (1 << DOR1) | (1 >> UPE1))){ //shift right? ask teacher if its right
+	if (rxUSART.status & ((1 << FE1) | (1 << DOR1) | (1 >> UPE1))){
 		rxUSART.error = 1;
 	}
 
 	rxUSART.receiver_buffer = UDR1;
 	rxUSART.receive = 1;
-
-	if(rxUSART.receiver_buffer == 'd' || rxUSART.receiver_buffer == 'D'){
-		flagMode=0;
-		rxUSART.receive = 0;
-	}
-
-	if(rxUSART.receiver_buffer == 's' || rxUSART.receiver_buffer == 'S'){
-		flagMode=1;
-		rxUSART.receive = 0;
-	}
-	if(rxUSART.receiver_buffer == 'b' || rxUSART.receiver_buffer == 'B'){
-		if(signal == 1){
-			sprintf(transmit_buffer,"Motor Speed: -%d\r\n",motor_speed);
-		}
-		else{
-			sprintf(transmit_buffer,"Motor Speed: %d\r\n",motor_speed);
-		}
-		send_message(transmit_buffer);
-		rxUSART.receive = 0;
-	}
+//send_message("dlfihjgekd\r\n");
 }
 
 
@@ -199,8 +180,19 @@ int main(void) {
 
 	while(1) {
 
+
+		if(rxUSART.receiver_buffer == 'd' || rxUSART.receiver_buffer == 'D'){
+			flagMode=0;
+			rxUSART.receive = 0;
+		}
+
+		if(rxUSART.receiver_buffer == 's' || rxUSART.receiver_buffer == 'S'){
+			flagMode=1;
+			rxUSART.receive = 0;
+		}
+
+
 		if(flagMode == 0){
-			input = 0; //reset every loop
 			if(rxUSART.receive == 1){ //if we have new data
 				if (rxUSART.error == 1) { //if theres an error
 					rxUSART.error = 0;
@@ -303,11 +295,23 @@ int main(void) {
 					OCR2 = speed;
 				}
 				break;
+			case 'b':
+			case 'B':
+				if(signal == 1){
+					sprintf(transmit_buffer,"Motor Speed: -%d\r\n",motor_speed);
+				}
+				else{
+					sprintf(transmit_buffer,"Motor Speed: %d\r\n",motor_speed);
+				}
+				send_message(transmit_buffer);
+				rxUSART.receive = 0;
 
 			default:
 				flag = 0;
 				break;
 		}
+
+		input = 0; //reset every loop
 
 		if(flag5ms == 1){
 			flag5ms = 0;
