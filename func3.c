@@ -145,7 +145,7 @@ void update_display(void) {
 
 		case 3:
 			PORTA = displays[3];
-			PORTC = mode[flagMode]; //either 0 or 1 which is "d" or "S" on display
+			PORTC = mode[flagMode]; //either 0, 1 or 2 which is "d", "S" or "A" on display
 	}
 	current_display++;
 	if(current_display == 4) {
