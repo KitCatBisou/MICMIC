@@ -1,6 +1,7 @@
 #include <avr/interrupt.h>
-#include <util/delay.h>
 #define F_CPU 16000000UL
+#include <util/delay.h>
+
 
 const unsigned char digits[] = {0xc0, 0xf9, 0xa4, 0xb0, 0x99, 0x92, 0x82, 0xf8, 0x80, 0x90, 0xFF, 0XBF}; //0-9, blank, minus signal
 const unsigned char displays[] = {0b11000000, 0b10000000, 0b01000000};

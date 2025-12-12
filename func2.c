@@ -1,7 +1,8 @@
 #include <avr/interrupt.h>
+#define F_CPU 16000000UL
 #include <util/delay.h>
 #include <stdio.h>
-#define F_CPU 16000000UL
+
 
 /*
    MOTOR AND DISPLAY VARIABLES
