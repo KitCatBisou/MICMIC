@@ -223,13 +223,13 @@ int main(void) {
 		}
 
 		else {
-			// 1. Get Speed from Assembly
+			// Get Speed from Assembly
 			adc_val = read_adc_avg();
 
-			// 2. Convert 0-255 (ADC) to 0-100 (Speed)
+			// Convert 0-255 (ADC) to 0-100 (Speed)
 			motor_speed = (adc_val * 100) / 255;
 
-			// 3. Update Motor
+			// Update Motor
 			speed = (motor_speed * 255) / 100;
 			OCR2 = speed;
 

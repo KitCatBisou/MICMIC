@@ -23,11 +23,18 @@ unsigned char num_d0 = 0; //current number on display 0
 unsigned char signal = 0;
 unsigned char current_display = 0;
 
+
+volatile uint16_t last_capture = 0;
+volatile uint16_t current_capture = 0;
+volatile uint16_t pulse_ticks = 0;
+volatile uint16_t rpm = 0;
+volatile uint8_t  rpm_timeout = 0; // To detect if motor stopped
+
 /*
    USART VARIABLES
 
 */
-const unsigned char mode[] = {0b10100001, 0b10010010, 0b10001000, 0b10000010};
+const unsigned char mode[] = {0b10100001, 0b10010010, 0b10001000, 0b10000010, 0b11000001};
 volatile unsigned char flagMode = 0; //PC(0) / switches(1) / potentiometer(2) / step motor(3)
 unsigned char input = 0;
 
@@ -94,6 +101,18 @@ void init(void) {
 	ADMUX = 0b00100000; // AREF, direita, canal 0
 	ADCSRA = 0b10000111; // ADEN, Prescaler 128
 
+	DDRD &= ~(1 << PD4); // Set PD4 as Input
+	PORTD |= (1 << PD4); // Enable Pull-up (Good for optical sensors)
+
+	// Normal Mode, Output Disconnected
+	TCCR1A = 0;
+
+	// Noise Canceler ON, Rising Edge, Prescaler 256
+	TCCR1B = (1 << ICNC1) | (1 << ICES1) | (1 << CS12);
+
+	// Enable Timer 1 Interrupts
+	TIMSK |= (1 << TICIE1) | (1 << TOIE1);
+
 	sei(); //activates flag I of SREG
 }
 
@@ -129,63 +148,67 @@ void Inv(void)
 }
 
 void update_display(void) {
-	num_d0 = motor_speed % 10; //puts last digit of speed on display 0
-	num_d1 = motor_speed / 10; //puts first digit of speed on display 1
-	int16_t temp_val;
+    int16_t temp_val;
 
-	if (flagMode == 3) { //step motor display is different than all the other one so we need an if here
-		temp_val = current_pos;
+    // MODE 4 (RPM)
+    if (flagMode == 4) {
+       switch(current_display) {
+          case 0: PORTA = displays[0]; PORTC = digits[rpm % 10]; break;
+          case 1: PORTA = displays[1]; PORTC = digits[(rpm / 10) % 10]; break;
+          case 2: PORTA = displays[2]; PORTC = digits[(rpm / 100) % 10]; break;
+          case 3: PORTA = displays[3]; PORTC = digits[(rpm / 1000) % 10]; break;
+       }
+    }
+    // --- MODES 0, 1, 2, 3: Standard Display (2 Digits + Mode Letter) ---
+    else {
+       if (flagMode == 3) {
+          // Stepper Motor Math
+          temp_val = current_pos;
+          if (temp_val < 0) {
+             signal = 1;
+             temp_val = -temp_val;
+          } else {
+             signal = 0;
+          }
+          if (temp_val > 99) temp_val = 99;
 
-		if (temp_val < 0) {
-			signal = 1;      // Turn on minus sign
-			temp_val = -temp_val; // Make positive
-		} else {
-			signal = 0;
-		}
+          num_d0 = temp_val % 10;
+          num_d1 = temp_val / 10;
+       }
+       else {
+          // DC Motor Math (Modes 0, 1, 2)
+          num_d0 = motor_speed % 10;
+          num_d1 = motor_speed / 10;
+          if(num_d1 == 10){ num_d1 = 9; num_d0 = 9; }
+       }
 
-		if (temp_val > 99) temp_val = 99; // Cap at 99 so display doesn't break
+       //Modes 0, 1, 2, 3
+       switch(current_display){
+          case 0:
+             PORTA = displays[0];
+             PORTC = digits[num_d0];
+             break;
+          case 1:
+             PORTA = displays[1];
+             PORTC = digits[num_d1];
+             break;
+          case 2:
+             PORTA = displays[2];
+             if (signal == 1) PORTC = digits[11]; // Minus
+             else PORTC = digits[10];             // Blank
+             break;
+          case 3:
+             PORTA = displays[3];
+             PORTC = mode[flagMode]; // Show d, S, A, or M
+             break;
+       }
+    }
 
-		num_d0 = temp_val % 10;
-		num_d1 = temp_val / 10;
-	}
-	else {
-		if(num_d1 == 10){ //if speed == 100, puts 99 on display
-			num_d1 = 9;
-			num_d0 = 9;
-		}
-		switch(current_display){
-			case 0:
-				PORTA = displays[0];
-				PORTC = digits[num_d0];
-				break;
-
-			case 1:
-				PORTA = displays[1];
-				PORTC = digits[num_d1];
-				break;
-
-			case 2:
-				PORTA = displays[2];
-				// If signal is 1 (negative), show minus, else blank
-				if (signal == 1) {
-					PORTC = digits[11];
-				}
-				else {
-					PORTC = digits[10];
-				}
-				break;
-
-			case 3:
-				PORTA = displays[3];
-				PORTC = mode[flagMode]; //either 0, 1 or 2 which is "d", "S" or "A" on display
-				break;
-		}
-		current_display++;
-		if(current_display == 4) {
-			current_display = 0;
-		}
-	}
-
+    // INCREMENT FOR EVERYONE
+    current_display++;
+    if(current_display == 4) {
+       current_display = 0;
+    }
 }
 
 /*
@@ -237,6 +260,39 @@ void step_once(int8_t direction) {
 }
 
 /*
+ INTERRUPT FOR RPM
+
+ */
+
+// ISR for Input Capture (When sensor sees a pulse on PD4)
+ISR(TIMER1_CAPT_vect) {
+	// Read the timer value
+	current_capture = ICR1;
+
+	// Calculate time difference
+	pulse_ticks = current_capture - last_capture;
+
+	// Save current as last for next time
+	last_capture = current_capture;
+
+	//Calculate RPM
+	if (pulse_ticks > 0) {
+		rpm = 3750000UL / pulse_ticks;
+	}
+
+	rpm_timeout = 0; // Reset timeout (motor is moving)
+}
+
+// ISR for Timer Overflow (Detects if motor stopped)
+ISR(TIMER1_OVF_vect) {
+	rpm_timeout++;
+	if (rpm_timeout > 5) { // If ~250ms passes with no pulse
+		rpm = 0;           // Motor is stopped
+		rpm_timeout = 5;   // Clamp
+	}
+}
+
+/*
  MAIN
 
  */
@@ -270,6 +326,10 @@ int main(void) {
 			flagMode = 3;
 			rxUSART.receive = 0;
 		}
+		if(rxUSART.receiver_buffer == 'v' || rxUSART.receiver_buffer == 'V'){
+			flagMode = 4;
+			rxUSART.receive = 0;
+		}
 
 
 		if(flagMode == 0){
@@ -283,18 +343,18 @@ int main(void) {
 				rxUSART.receive = 0;
 			}
 		}
-		else if (flagMode == 1) {
+		else if (flagMode == 1 || flagMode == 4) {
 			input = PINA & 0b0111111;
 		}
 
 		else if	(flagMode == 2) {
-			// Get Speed from Assembly
+			//Get Speed from Assembly
 			adc_val = read_adc_avg();
 
 			// Convert 0-255 (ADC) to 0-100 (Speed)
 			motor_speed = (adc_val * 100) / 255;
 
-			// Update Motor
+			//Update Motor
 			speed = (motor_speed * 255) / 100;
 			OCR2 = speed;
 
@@ -356,7 +416,7 @@ int main(void) {
 			}
 		}
 
-		if (flagMode != 2) { //if not in potentiometer mode
+		if (flagMode != 2 && flagMode != 3) { //if not in potentiometer mode or step motor mode
 			switch(input){
 				case 0b00111110: //SW1 & '+' inc 5%
 				case '+':
